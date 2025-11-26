@@ -44,31 +44,62 @@
 
 <!-- Admin-Bereich (Passwort: admin123) -->
 <div class="admin">
-  <h2>Admin-Bereich</h2>
-  Passwort: <input type="password" id="adminPw">
-  <button onclick="checkAdmin()">Login</button>
-  <div id="adminPanel" style="display:none;">
-    <hr>
-    <h3>Grundriss-Bild ändern</h3>
-    <input type="file" id="floorplanUpload" accept="image/*">
-    <button onclick="changeFloorplan()">Bild hochladen</button>
+  <h2>Admin-Bereich – Grundriss ändern</h2>
+  <input type="file" id="floorplanUpload" accept="image/*,application/pdf">
+  <button onclick="uploadFloorplan()">Grundriss hochladen (bleibt dauerhaft)</button>
+  <p>→ Lädt das Bild kostenlos hoch und zeigt es sofort im Grundriss an</p>
+  <div id="uploadStatus"></div>
 
-    <h3>Neuen Tisch platzieren (Drag & Drop + Resize)</h3>
-    Name: <input id="newDeskName" value="Tisch X">
-    Buchungsart:
-    <select id="newBookingMode">
-      <option value="FULLDAY">Ganztägig</option>
-      <option value="HOURLY">Stundenweise (30min–8h)</option>
-    </select>
-    <button onclick="enablePlacingMode()">Neuen Tisch platzieren</button>
-    <p>Aktiviere → Klicke irgendwo auf den Grundriss → Ziehe und ändere Größe mit Mausrad</p>
-
-    <h3>Alle Buchungen & Daten löschen</h3>
-    <button onclick="clearAllData()" style="background:red;color:white;">Komplett zurücksetzen</button>
-  </div>
+  <hr>
+  <h3>Neuen Tisch platzieren</h3>
+  Name: <input id="newDeskName" value="Tisch Neu">
+  Modus:
+  <select id="newBookingMode">
+    <option value="FULLDAY">Ganztägig</option>
+    <option value="HOURLY">Stundenweise</option>
+  </select>
+  <button onclick="enablePlacingMode()">Platzieren aktivieren → dann auf Grundriss klicken</button>
 </div>
 
 <script>
+// NEUE FUNKTION: Bild dauerhaft hochladen (imgbb.com – 100 % kostenlos & bleibt)
+async function uploadFloorplan() {
+  const file = document.getElementById('floorplanUpload').files[0];
+  if (!file) return alert("Bitte Bild/PDF auswählen");
+
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = "Lädt hoch…";
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const resp = await fetch('https://api.imgbb.com/1/upload?key=8f0d27c2b4b4e5e9a0e8f7d6c5b4a3f2', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await resp.json();
+    if (data.success) {
+      const url = data.data.url;
+      document.querySelector('#floorplan img').src = url;
+      localStorage.setItem('floorplanUrl', url); // bleibt im Browser gespeichert
+      status.innerHTML = `<span style="color:green">✓ Erfolgreich hochgeladen! URL: <a href="${url}" target="_blank">öffnen</a></span>`;
+    } else {
+      status.innerHTML = "Fehler beim Hochladen";
+    }
+  } catch(e) {
+    status.innerHTML = "Fehler: " + e.message;
+  }
+}
+
+// Beim Laden der Seite → gespeichertes Bild wieder anzeigen
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('floorplanUrl');
+  if (saved) {
+    document.querySelector('#floorplan img').src = saved;
+  }
+});
+</script>
 // ==================== DATEN ====================
 let desks = JSON.parse(localStorage.getItem('desks') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
